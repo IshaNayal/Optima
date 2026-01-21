@@ -18,12 +18,12 @@ def fetch_data():
             print("\nFirst 5 rows:")
             print(df.head())
             
-            # Save locally
+        
             os.makedirs('data', exist_ok=True)
             df.to_csv('data/bitext_raw.csv', index=False)
             print("\nSaved raw data to data/bitext_raw.csv")
             
-            # Inspect unique intents
+            
             if 'intent' in df.columns:
                 print("\nUnique Intents:")
                 print(df['intent'].unique())
