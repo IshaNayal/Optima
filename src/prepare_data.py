@@ -7,9 +7,9 @@ def process_data():
     print("Reading raw data...")
     df = pd.read_csv(input_file)
     
-    # Mapping
+    
     intent_map = {
-        # Billing
+        
         'check_invoice': 'Billing',
         'check_payment_methods': 'Billing',
         'check_refund_policy': 'Billing',
@@ -19,16 +19,16 @@ def process_data():
         'check_cancellation_fee': 'Billing',
         'track_refund': 'Billing',
         
-        # Technical (Account & System issues)
+        
         'create_account': 'Technical',
         'delete_account': 'Technical',
         'edit_account': 'Technical',
         'recover_password': 'Technical',
         'registration_problems': 'Technical',
         'switch_account': 'Technical',
-        'newsletter_subscription': 'Technical', # Managing subscription settings often technical/account
+        'newsletter_subscription': 'Technical', 
         
-        # General (Orders, Shipping, Contact, Feedback)
+        
         'contact_customer_service': 'General',
         'contact_human_agent': 'General',
         'complaint': 'General',
@@ -43,23 +43,21 @@ def process_data():
         'set_up_shipping_address': 'General'
     }
     
-    # Apply mapping
+    
     print("Mapping intents to categories...")
     df['category'] = df['intent'].map(intent_map)
     
-    # Check for unmapped
+    
     unmapped = df[df['category'].isna()]['intent'].unique()
     if len(unmapped) > 0:
         print(f"Warning: Unmapped intents found: {unmapped}")
-        # Default to General
+       
         df['category'] = df['category'].fillna('General')
     
-    # Select columns
-    # instruction is the user text
+    
     final_df = df[['instruction', 'category']].rename(columns={'instruction': 'text'})
     
-    # Add synthetic data for Pricing/Plans -> Billing
-    # The Bitext dataset is low on explicit "plan comparison" queries, so we inject some to help the model learn.
+    
     print("Injecting synthetic pricing/plan data...")
     pricing_data = [
         {'text': 'What is the difference between basic and pro plans?', 'category': 'Billing'},
@@ -76,15 +74,13 @@ def process_data():
         {'text': 'What are the benefits of the gold plan?', 'category': 'Billing'}
     ]
     
-    # Duplicate these samples to ensure they have enough weight (27k total samples, so ~500 copies gives ~0.5% weight which is significant enough for these specific patterns)
+    
     pricing_df = pd.DataFrame(pricing_data)
     pricing_df_augmented = pd.concat([pricing_df] * 50, ignore_index=True)
     
     final_df = pd.concat([final_df, pricing_df_augmented], ignore_index=True)
 
-    # Add synthetic data for Access/Feature Locking Issues -> Technical
-    # User feedback: "After the update, premium features are locked even though payment was successful" should be Technical.
-    # The model currently confuses this with Billing because of the word "payment".
+    
     print("Injecting synthetic access/feature issue data...")
     access_data = [
         {'text': 'After the update, premium features are locked even though payment was successful.', 'category': 'Technical'},
@@ -100,14 +96,12 @@ def process_data():
     ]
     
     access_df = pd.DataFrame(access_data)
-    # Higher weight to override strong "payment" -> "Billing" association
+   
     access_df_augmented = pd.concat([access_df] * 100, ignore_index=True)
     
     final_df = pd.concat([final_df, access_df_augmented], ignore_index=True)
 
-    # Add synthetic data for Technical Failures in Billing Context -> Technical
-    # User feedback: "The app freezes whenever I try to download my billing statement" should be Technical.
-    # The model currently confuses this with Billing because of "billing statement".
+    
     print("Injecting synthetic technical faults in billing context...")
     tech_billing_data = [
         {'text': 'The app freezes whenever I try to download my billing statement.', 'category': 'Technical'},
@@ -123,12 +117,12 @@ def process_data():
     ]
     
     tech_billing_df = pd.DataFrame(tech_billing_data)
-    # Heavy weighting to overcome strong keyword associations
+    
     tech_billing_df_augmented = pd.concat([tech_billing_df] * 100, ignore_index=True)
     
     final_df = pd.concat([final_df, tech_billing_df_augmented], ignore_index=True)
     
-    # Save
+    
     final_df.to_csv(output_file, index=False)
     print(f"Processed {len(final_df)} samples.")
     print(f"Saved to {output_file}")
