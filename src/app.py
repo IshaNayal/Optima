@@ -1,4 +1,4 @@
-# To run the frontend: streamlit run src/streamlit_app.py
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import torch
@@ -10,7 +10,7 @@ from typing import Dict
 
 app = FastAPI(title="Text Classification API (BERT + LinearSVC)")
 
-# Load BERT model and tokenizer
+
 BERT_MODEL_DIR = 'models/bert'
 bert_model = None
 bert_tokenizer = None
@@ -23,7 +23,7 @@ if os.path.exists(BERT_MODEL_DIR):
 else:
     print("BERT model not found. API will fail for BERT requests.")
 
-# Load Scikit-Learn Model
+
 SKLEARN_MODEL_PATH = 'models/text_classifier.joblib'
 sklearn_model = None
 
@@ -33,12 +33,12 @@ if os.path.exists(SKLEARN_MODEL_PATH):
 else:
     print("LinearSVC model not found.")
 
-# Label map (must match training)
+
 label_map = {0: 'Billing', 1: 'General', 2: 'Technical'}
 
 class PredictRequest(BaseModel):
     text: str
-    model: str = "bert" # "bert" or "sklearn"
+    model: str = "bert" 
 
 class PredictResponse(BaseModel):
     category: str
@@ -67,7 +67,7 @@ def predict(request: PredictRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    else: # Default to BERT
+    else: 
         if not bert_model:
             raise HTTPException(status_code=500, detail="BERT model not loaded.")
         try:
