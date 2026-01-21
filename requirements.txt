@@ -1,0 +1,13 @@
+scikit-learn
+pandas
+numpy
+fastapi
+uvicorn
+joblib
+requests
+streamlit
+plotly
+torch
+transformers
+datasets
+accelerate

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Models (Large files)
+models/bert/
+models/bert_phase1/
+models/bert_phase2/
+models/*.bin
+models/*.safetensors
+*.joblib
+!models/text_classifier.joblib
+
+# Results/Checkpoints (Large files)
+results/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Project specific
+test_data_samples.csv
+project_bundle.zip

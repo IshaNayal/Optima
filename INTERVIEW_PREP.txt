@@ -1,0 +1,126 @@
+================================================================================
+BUSINESS TEXT CLASSIFICATION SYSTEM - INTERVIEW PREPARATION GUIDE
+================================================================================
+
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+This project is a robust "Business Text Classification System" designed to automatically categorize customer support queries into three distinct departments:
+1. Technical (system errors, bugs, crashes)
+2. Billing (payments, invoices, refunds)
+3. General (greetings, feedback, account queries)
+
+The goal was to build a production-ready system that prioritizes "consistency, robustness, and explainable performance" over raw complexity. It features a dual-model approach, allowing users to switch between a fast statistical model (LinearSVC) and a deep learning model (DistilBERT).
+
+2. TECH STACK
+--------------------------------------------------------------------------------
+*   **Language**: Python 3.x
+*   **Machine Learning (Traditional)**: Scikit-learn (LinearSVC, TfidfVectorizer, CalibratedClassifierCV, Pipeline)
+*   **Deep Learning (NLP)**: PyTorch, Hugging Face Transformers (DistilBERT), Datasets
+*   **Data Manipulation**: Pandas, NumPy
+*   **Backend API**: FastAPI, Uvicorn (for serving the models)
+*   **Frontend UI**: Streamlit (for interactive testing and visualization)
+*   **Visualization**: Plotly (for confidence charts)
+
+3. DATASET STRATEGY (CRITICAL INTERVIEW TOPIC)
+--------------------------------------------------------------------------------
+We used two distinct datasets, and the strategy for handling them is a key talking point.
+
+A. Primary Dataset (IDE-agent-generated)
+   - **Nature**: ~29k short, business-specific queries.
+   - **Characteristics**: Clean, label-consistent, max length 11 words.
+   - **Role**: The "Gold Standard" for training. All models were primarily optimized for this distribution.
+
+B. Secondary Dataset (HuggingFace Bitext)
+   - **Nature**: ~27k raw, noisy, conversational entries.
+   - **Characteristics**: Longer, mixed intents, different style.
+   - **Role**: Used for an experimental "Phase 2" fine-tuning to test model robustness.
+   - **Key Decision**: We mapped specific intents (e.g., 'check_invoice' -> 'Billing') to align with our schema.
+
+4. MODELING APPROACH & PROCESS
+--------------------------------------------------------------------------------
+
+### Model A: LinearSVC (The Baseline/Production Workhorse)
+*   **Why LinearSVC?** Support Vector Machines (Linear Kernel) are often state-of-the-art for short, high-dimensional text classification tasks where keywords matter more than complex sentence structure.
+*   **Pipeline**:
+    1.  **TF-IDF Vectorization**: N-grams (1,3) to capture phrases like "credit card" or "system crash". Max features limited to 10,000 to reduce noise.
+    2.  **LinearSVC**: The core classifier.
+    3.  **CalibratedClassifierCV**: Wrapped around LinearSVC to provide probability estimates (confidence scores), which standard SVMs don't output by default.
+*   **Performance**: Achieved ~99.8% Accuracy on the primary dataset. It is extremely fast and lightweight.
+
+### Model B: DistilBERT (The Semantic Engine)
+*   **Why DistilBERT?** It is a smaller, faster, cheaper version of BERT that retains 97% of performance. It captures "semantic meaning" (context) better than TF-IDF.
+*   **Training Strategy (The "Two-Phase" Experiment)**:
+    *   **Phase 1**: Fine-tuned on the clean IDE-agent dataset.
+        *   *Result*: ~99.6% Accuracy. Excellent performance.
+    *   **Phase 2**: We attempted to further fine-tune this model on the noisy Bitext dataset to make it more "generalizable."
+        *   *Outcome*: **Catastrophic Forgetting**. The model adapted so well to the noisy data that its accuracy on the primary clean data dropped from 99.6% to ~73%.
+    *   **Automated Failsafe**: The training script included a stability check. Detecting this drop, the system **automatically reverted** to the Phase 1 model, adhering to the principle: "Do not prioritize noisy data over clean data."
+
+5. SYSTEM ARCHITECTURE
+--------------------------------------------------------------------------------
+The project follows a microservices-like architecture:
+
+[ User ] -> [ Streamlit Frontend (Port 8501) ]
+                        |
+                        v
+                 (HTTP Requests)
+                        |
+                        v
+[ FastAPI Backend (Port 8000) ] --> [ Model Registry ]
+                                          |-- Loads LinearSVC (.joblib)
+                                          |-- Loads DistilBERT (PyTorch)
+
+*   **API Design**: The `/predict` endpoint accepts a JSON body with `text` and `model` (selection). It returns the category, confidence score, and probability distribution.
+*   **Validation**: Used Pydantic models (`PredictRequest`, `PredictResponse`) to ensure data integrity.
+
+6. PROBLEMS & DIAGNOSTICS (TROUBLESHOOTING)
+--------------------------------------------------------------------------------
+In a production environment, you might face these issues. Here is how to diagnose and fix them:
+
+**Problem 1: Model "Drift" / Performance Degradation**
+*   **Symptom**: The model starts misclassifying recent queries (e.g., new product names are treated as 'General' instead of 'Technical').
+*   **Diagnostic**: Compare the distribution of incoming live data against the training data (Data Drift). Check if the confidence scores for predictions are trending downwards.
+*   **Fix**: Retrain the model with a new dataset that includes these recent examples (Active Learning).
+
+**Problem 2: High Latency (Slow Predictions)**
+*   **Symptom**: The API takes >500ms to respond.
+*   **Diagnostic**: Use profiling tools (like `cProfile` or APM tools like New Relic/Datadog) to see where time is spent.
+    *   *If CPU usage is high*: The BERT model might be too heavy.
+    *   *If I/O is high*: Logging or network issues.
+*   **Fix**: Switch to LinearSVC for speed, use ONNX runtime to optimize BERT, or cache frequent predictions.
+
+**Problem 3: "Catastrophic Forgetting" (Observed in this project)**
+*   **Symptom**: After fine-tuning on new data, the model fails on old data.
+*   **Diagnostic**: Maintain a "Golden Test Set" of original data. Run evaluation on this set after every training phase.
+*   **Fix**: Use replay buffers (mix old data with new), freeze lower layers of the network, or use Elastic Weight Consolidation (EWC).
+
+**Problem 4: Out of Memory (OOM)**
+*   **Symptom**: The application crashes during BERT inference or training.
+*   **Diagnostic**: Monitor RAM/VRAM usage.
+*   **Fix**: Reduce batch size, use gradient accumulation, or switch to a smaller model (DistilBERT vs BERT-Large).
+
+**Problem 5: IDE/Linter False Positives (Environment Diagnostics)**
+*   **Symptom**: VS Code shows "Unresolved import" errors (e.g., for `transformers` or `sklearn`), but the code runs successfully in the terminal.
+*   **Diagnostic**: Run `pip show transformers` in the terminal to confirm installation. If it's installed, the issue is with the IDE's Python interpreter selection or the Pylance language server, not the code itself.
+*   **Fix**:
+    1.  Ensure the correct Python interpreter is selected in the IDE (Command Palette -> "Python: Select Interpreter").
+    2.  Ignore the error if the code executes correctly via `python src/train_bert.py`.
+    3.  Restart the IDE or the Pylance language server.
+
+7. COMMON INTERVIEW QUESTIONS & ANSWERS
+--------------------------------------------------------------------------------
+
+Q: Why did you use LinearSVC over a Random Forest or Naive Bayes?
+A: For high-dimensional sparse data (like TF-IDF text vectors), Linear models often outperform tree-based models. SVMs find the optimal hyperplane separating the classes, which works exceptionally well for distinct topics like "Billing" vs "Technical".
+
+Q: Why did the BERT model perform worse after Phase 2 training?
+A: This is known as "Catastrophic Forgetting." Neural networks tend to overwrite previous knowledge when trained on new, sufficiently different data. The Bitext dataset had a different distribution and style. Without replay buffers or elastic weight consolidation (EWC), the model optimized for the new noise at the expense of the original clean patterns.
+
+Q: How do you handle the trade-off between the two models?
+A: The API supports both. LinearSVC is the default for low-latency, high-throughput requirements (CPU only). BERT is available for cases where queries are ambiguous or require deeper contextual understanding, at the cost of higher latency.
+
+Q: How would you deploy this in production?
+A: I would Dockerize the application (create a Dockerfile), potentially separating the API and Frontend into two containers. I'd use a production server like Gunicorn with Uvicorn workers for the API, and deploy it to a cloud provider (AWS/GCP/Azure) using a container orchestration service like ECS or Kubernetes.
+
+Q: How did you handle class imbalance?
+A: While our primary dataset was relatively balanced, in a real scenario, I would use the `class_weight='balanced'` parameter in LinearSVC or a WeightedRandomSampler/Loss weighting in the BERT Trainer to penalize misclassifications of the minority class more heavily.
