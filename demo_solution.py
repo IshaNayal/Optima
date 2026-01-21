@@ -23,7 +23,7 @@ if __name__ == "__main__":
     print("DEMONSTRATING SOLUTION COMPONENTS")
     print("=================================")
     
-    # 1. Model Usage via API
+    
     text = "I need a copy of my last invoice please."
     test_model("sklearn", text)
     test_model("bert", text)
