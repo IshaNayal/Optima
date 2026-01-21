@@ -47,3 +47,9 @@ To retrain the models:
 python src/train.py       # Train LinearSVC
 python src/train_bert.py  # Train BERT
 ```
+![b553ad32-fc93-4074-bda9-b26e8373b913](https://github.com/user-attachments/assets/17caf017-b602-44a4-b49e-a85ca96daa1b)
+
+![856bb12c-8632-45ca-9197-5375ab189da0](https://github.com/user-attachments/assets/28ee13ed-a5c3-47cc-8576-8c10a5e6b956)
+![0f89d923-315f-4411-851b-2c9af9aabfd5](https://github.com/user-attachments/assets/bdf576d3-f67f-413c-9ce5-ac28c57829d9)
+
+![5ad8f7bb-22e4-4082-9396-ac74d8f52514](https://github.com/user-attachments/assets/7f604ebe-fab8-42be-af02-92604888ba79)
