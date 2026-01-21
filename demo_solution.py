@@ -28,7 +28,7 @@ if __name__ == "__main__":
     test_model("sklearn", text)
     test_model("bert", text)
     
-    print("\n=================================")
+    print("\n=================================") 
     print("EVALUATION METRICS LOCATIONS")
     print("1. LinearSVC Metrics: models/metrics_linear.json")
     print("2. BERT Metrics:      models/metrics_bert.json")
