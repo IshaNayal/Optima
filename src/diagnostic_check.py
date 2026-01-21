@@ -26,18 +26,18 @@ def run_diagnostics():
     print("       OPTIMA SYSTEM DIAGNOSTICS CHECK            ")
     print("==================================================")
     
-    # 1. Environment Check
+   
     print("\n[1] Checking Core Dependencies...")
     dependencies = ['torch', 'transformers', 'sklearn', 'fastapi', 'uvicorn', 'streamlit', 'pandas']
     all_deps_ok = all(check_import(dep) for dep in dependencies)
     
-    # 2. Model Check
+    
     print("\n[2] Checking Model Artifacts...")
     models = [
         "models/linear_svc_model.joblib",
         "models/bert/config.json",
         "models/bert/model.safetensors" 
-        # Note: sometimes it's pytorch_model.bin, checking dir first
+        
     ]
     
     bert_dir = "models/bert"
@@ -46,7 +46,7 @@ def run_diagnostics():
     models_ok = check_file(linear_model)
     if os.path.isdir(bert_dir):
         print(f"[+] BERT Directory found: {bert_dir}")
-        # Check for model weights
+        
         if os.path.exists(os.path.join(bert_dir, "model.safetensors")) or os.path.exists(os.path.join(bert_dir, "pytorch_model.bin")):
              print(f"[+] BERT Weights found in {bert_dir}")
         else:
@@ -56,7 +56,7 @@ def run_diagnostics():
         print(f"[-] BERT Directory MISSING: {bert_dir}")
         models_ok = False
 
-    # 3. Data Check
+    
     print("\n[3] Checking Datasets...")
     datasets = ["data/dataset.csv", "data/bitext_raw.csv"]
     data_ok = all(check_file(f) for f in datasets)
