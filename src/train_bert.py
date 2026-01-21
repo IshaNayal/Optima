@@ -108,7 +108,7 @@ def train_bert():
     )
 
     print("Starting Phase 1 Training (IDE Data)...")
-    trainer_phase1.train()
+    trainer_phase1.train() 
     
     print("Evaluating Phase 1 Model on IDE Test Set...")
     metrics_ide = trainer_phase1.evaluate()
