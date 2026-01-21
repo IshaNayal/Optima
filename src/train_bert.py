@@ -7,7 +7,7 @@ from transformers import DistilBertTokenizer, DistilBertForSequenceClassificatio
 from datasets import Dataset
 import os
 
-# Set random seed for reproducibility
+
 torch.manual_seed(42)
 np.random.seed(42)
 
@@ -25,16 +25,16 @@ def compute_metrics(pred):
 
 def get_bitext_mapping(intent):
     intent_mapping = {
-        # Billing
+        
         'check_invoice': 'Billing', 'get_invoice': 'Billing',
         'check_payment_methods': 'Billing', 'payment_issue': 'Billing',
         'check_refund_policy': 'Billing', 'get_refund': 'Billing', 'track_refund': 'Billing',
         'check_cancellation_fee': 'Billing',
         
-        # Technical
+        
         'registration_problems': 'Technical',
         
-        # General
+        
         'cancel_order': 'General', 'change_order': 'General', 'place_order': 'General', 'track_order': 'General',
         'change_shipping_address': 'General', 'set_up_shipping_address': 'General', 
         'delivery_options': 'General', 'delivery_period': 'General',
@@ -49,9 +49,7 @@ def get_bitext_mapping(intent):
 def train_bert():
     print("=== BERT Training Start ===")
     
-    # ---------------------------------------------------------
-    # Phase 1: Train on IDE-agent dataset (PRIMARY)
-    # ---------------------------------------------------------
+    
     print("\n[Phase 1] Loading IDE-agent dataset (dataset.csv)...")
     try:
         df_ide = pd.read_csv('data/dataset.csv')
@@ -64,8 +62,7 @@ def train_bert():
     df_ide = df_ide.dropna(subset=['text', 'label'])
     df_ide['label'] = df_ide['label'].astype(int)
 
-    # Use a subset for speed in this environment, but conceptually should be full
-    # Using 4000 samples for Phase 1
+    
     print("Using 4000 samples from IDE dataset for Phase 1 training...")
     df_ide_subset = df_ide.sample(4000, random_state=42)
     
@@ -117,34 +114,32 @@ def train_bert():
     metrics_ide = trainer_phase1.evaluate()
     print(f"Phase 1 Metrics (IDE Test Set): {metrics_ide}")
     
-    # Diagnostic: Print detailed classification report
+    
     print("\n[Diagnostic] Phase 1 Classification Report:")
     preds_phase1 = trainer_phase1.predict(tokenized_test_ide)
     y_preds_1 = np.argmax(preds_phase1.predictions, axis=1)
     print(classification_report(preds_phase1.label_ids, y_preds_1, target_names=['Billing', 'General', 'Technical']))
 
-    # Save Phase 1 model temporarily
+    
     print("Saving Phase 1 model to models/bert_phase1...")
     os.makedirs('models/bert_phase1', exist_ok=True)
     model.save_pretrained("models/bert_phase1")
     tokenizer.save_pretrained("models/bert_phase1")
 
-    # ---------------------------------------------------------
-    # Phase 2: Light Fine-tuning on Bitext dataset (SECONDARY)
-    # ---------------------------------------------------------
+    
     print("\n[Phase 2] Loading and Processing HuggingFace dataset (bitext_raw.csv)...")
     try:
         df_hf = pd.read_csv('data/bitext_raw.csv')
-        # Map intents
-        df_hf['mapped_category'] = df_hf['intent'].apply(get_bitext_mapping)
-        df_hf = df_hf.dropna(subset=['mapped_category']) # Drop unmapped
         
-        # Use 'instruction' as text
+        df_hf['mapped_category'] = df_hf['intent'].apply(get_bitext_mapping)
+        df_hf = df_hf.dropna(subset=['mapped_category']) 
+        
+        
         df_hf['label'] = df_hf['mapped_category'].map(label_map)
         df_hf = df_hf.dropna(subset=['instruction', 'label'])
         df_hf['label'] = df_hf['label'].astype(int)
         
-        # Select subset for light fine-tuning (e.g., 1000 samples)
+        
         print("Using 1000 samples from HF dataset for Phase 2 fine-tuning...")
         df_hf_subset = df_hf.sample(1000, random_state=42)
         
@@ -159,21 +154,21 @@ def train_bert():
         tokenized_train_hf = train_dataset_hf.map(tokenize_function, batched=True)
         tokenized_test_hf = test_dataset_hf.map(tokenize_function, batched=True)
         
-        # Phase 2 Training Arguments (Lower LR, fewer epochs)
+        
         training_args_phase2 = TrainingArguments(
             output_dir='./results/phase2',
             num_train_epochs=1,
-            learning_rate=2e-5, # Lower learning rate
+            learning_rate=2e-5, 
             per_device_train_batch_size=16,
             per_device_eval_batch_size=16,
             logging_dir='./logs/phase2',
             logging_steps=10,
             eval_strategy="epoch",
-            save_strategy="no", # Don't save intermediate checkpoints
+            save_strategy="no", 
             use_cpu=True
         )
         
-        # Reuse model from Phase 1
+      
         trainer_phase2 = Trainer(
             model=model,
             args=training_args_phase2,
@@ -189,26 +184,26 @@ def train_bert():
         metrics_hf = trainer_phase2.evaluate()
         print(f"Phase 2 Metrics (HF Test Set): {metrics_hf}")
         
-        # Diagnostic: Phase 2 Report
+        
         print("\n[Diagnostic] Phase 2 Classification Report (HF Test Set):")
         preds_phase2 = trainer_phase2.predict(tokenized_test_hf)
         y_preds_2 = np.argmax(preds_phase2.predictions, axis=1)
         print(classification_report(preds_phase2.label_ids, y_preds_2, target_names=['Billing', 'General', 'Technical']))
 
-        # Re-evaluate on IDE test set to check stability
+        
         print("Re-evaluating Phase 2 Model on IDE Test Set (Stability Check)...")
         metrics_ide_final = trainer_phase2.evaluate(tokenized_test_ide)
         print(f"Phase 2 Metrics on IDE Test Set: {metrics_ide_final}")
         
-        # Check for catastrophic forgetting
+        
         acc_phase1 = metrics_ide['eval_accuracy']
         acc_phase2 = metrics_ide_final['eval_accuracy']
         
-        if acc_phase2 < (acc_phase1 - 0.05): # 5% tolerance
+        if acc_phase2 < (acc_phase1 - 0.05): 
             print(f"\n[WARNING] Phase 2 degraded performance on PRIMARY dataset (Phase 1 Acc: {acc_phase1:.4f} -> Phase 2 Acc: {acc_phase2:.4f}).")
             print("Reverting to Phase 1 model as per instruction 'Do NOT prioritize noisy data over clean data'.")
             
-            # Reload Phase 1 model to save it as final
+           
             model = DistilBertForSequenceClassification.from_pretrained("models/bert_phase1")
             tokenizer = DistilBertTokenizer.from_pretrained("models/bert_phase1")
         else:
@@ -217,9 +212,7 @@ def train_bert():
     except Exception as e:
         print(f"Skipping Phase 2 due to error or missing data: {e}")
 
-    # ---------------------------------------------------------
-    # Save Final Model
-    # ---------------------------------------------------------
+    
     print("\nSaving final model to models/bert...")
     os.makedirs('models/bert', exist_ok=True)
     model.save_pretrained("models/bert")
