@@ -9,7 +9,7 @@ except ImportError:
     px = None
     ff = None
 
-# Configuration
+
 API_URL = "http://localhost:8000/predict"
 
 def main():
@@ -21,7 +21,7 @@ def main():
 
     st.title("🤖 Business Text Classification System")
     
-    # Create tabs
+    
     tab1, tab2 = st.tabs(["Prediction", "Model Evaluation"])
     
     with tab1:
@@ -29,12 +29,12 @@ def main():
         Classify business communications into **Technical**, **Billing**, or **General** categories.
         """)
 
-    # Sidebar for info
+    
     with st.sidebar:
         st.header("About")
         st.info("This system uses Machine Learning models to categorize text inputs.")
         
-        # Model Selection
+        
         st.subheader("Model Selection")
         model_choice = st.radio(
             "Choose a model:",
@@ -47,7 +47,7 @@ def main():
         st.markdown("- **Billing**: Invoices, payments, refunds")
         st.markdown("- **General**: General inquiries, greetings")
 
-    # Main input area
+   
     col1, col2 = tab1.columns([1, 1])
 
     with col1:
@@ -67,15 +67,15 @@ def main():
                     if response.status_code == 200:
                         result = response.json()
                         
-                        # Display results in the second column
+                        
                         with col2:
                             st.subheader("Analysis Results")
                             
-                            # Top prediction
+                           
                             category = result['category']
                             confidence = result['confidence']
                             
-                            # Color coding based on category
+                            
                             color_map = {
                                 "Technical": "red",
                                 "Billing": "green",
@@ -86,7 +86,7 @@ def main():
                             st.markdown(f"### Predicted Category: :{color}[{category}]")
                             st.metric("Confidence Score", f"{confidence:.2%}")
                             
-                            # Probability chart
+                            
                             st.markdown("#### Probability Distribution")
                             probs = result.get('probabilities', {})
                             if probs:
@@ -108,7 +108,7 @@ def main():
             else:
                 st.warning("Please enter some text to classify.")
 
-    # Example inputs
+    s
     st.divider()
     st.subheader("Try Examples")
     examples = [
@@ -120,8 +120,7 @@ def main():
     
     for ex in examples:
         if st.button(ex):
-            # We can't easily populate the text area programmatically without session state tricks
-            # So we'll just run the classification directly for the example
+            
             try:
                 response = requests.post(API_URL, json={"text": ex, "model": model_key})
                 if response.status_code == 200:
@@ -136,39 +135,39 @@ def main():
         import json
         import os
         
-        # Load metrics
+       
         metrics_file = "models/metrics_bert.json" if model_key == "bert" else "models/metrics_linear.json"
         
         if os.path.exists(metrics_file):
             with open(metrics_file, 'r') as f:
                 metrics = json.load(f)
             
-            # Display high-level metrics
+            
             m1, m2 = st.columns(2)
             m1.metric("Test Accuracy", f"{metrics['accuracy']:.2%}")
             m2.metric("F1 Score (Weighted)", f"{metrics['f1_score']:.4f}")
             
             st.divider()
             
-            # Display detailed classification report
+            
             st.subheader("Detailed Classification Report")
             report = metrics.get('classification_report', {})
             if report:
-                # Convert to dataframe for nicer display
+               
                 df_report = pd.DataFrame(report).transpose()
-                # Filter out accuracy/macro avg rows if desired, or keep them
+                
                 st.dataframe(df_report.style.format("{:.4f}"))
             
             st.divider()
             
-            # Display Confusion Matrix
+            
             st.subheader("Confusion Matrix")
             cm = metrics.get('confusion_matrix', [])
             if cm and ff:
-                # Labels
+                
                 labels = ['Billing', 'General', 'Technical']
                 
-                # Invert for heatmap (y-axis top to bottom) usually handled by library
+                 
                 fig_cm = ff.create_annotated_heatmap(
                     z=cm, 
                     x=labels, 
